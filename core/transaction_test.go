@@ -26,6 +26,24 @@ func TestVerifyTransaction(t *testing.T) {
 
 	otherPrivKey := crypto.GeneratePrivateKey()
 	//生成虚假公钥
-	tx.PublicKey = otherPrivKey.PublicKey()
+	tx.From = otherPrivKey.PublicKey()
 	assert.NotNil(t, tx.Verify())
+}
+
+// func TestTxEncodeDecode(t *testing.T) {
+// 	tx := randomTxWithSignature(t)
+// 	buf := &bytes.Buffer{}
+// 	assert.Nil(t, tx.Encode(NewGobTxEncoder(buf)))
+// 	// txDecoded := new(Transaction)
+// 	// assert.Nil(t, txDecoded.Decode(NewGobTxDecoder(buf)))
+// 	// assert.Equal(t, tx, txDecoded)
+// }
+
+func randomTxWithSignature(t *testing.T) *Transaction {
+	privKey := crypto.GeneratePrivateKey()
+	tx := &Transaction{
+		Data: []byte("too"),
+	}
+	assert.Nil(t, tx.Sign(privKey))
+	return tx
 }

@@ -22,8 +22,8 @@ func (h Hash) String() string {
 }
 
 // 生成指定长度的随机字节切片。
-func RandomHash(size int) Hash {
+func RandomHash(size int) []byte {
 	token := make([]byte, size)
 	rand.Read(token) //rand.Read() 会将生成的伪随机字节填充到这个token中。
-	return Hash(token)
+	return token
 }

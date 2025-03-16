@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 )
@@ -15,7 +16,7 @@ type LocalTransport struct {
 func NewLocalTransport(addr NetAddr) Transport {
 	return &LocalTransport{
 		addr:      addr,
-		consumeCh: make(chan RPC),
+		consumeCh: make(chan RPC, 1024),
 		peers:     make(map[NetAddr]*LocalTransport),
 	}
 }
@@ -40,7 +41,16 @@ func (t *LocalTransport) SendMessage(to NetAddr, payload []byte) error {
 	}
 	peer.consumeCh <- RPC{ //将接收到的rpc放进自己的consume通道里面
 		From:    t.addr,
-		Payload: payload,
+		Payload: bytes.NewReader(payload),
+	}
+	return nil
+}
+
+func (t *LocalTransport) Broadcast(payload []byte) error {
+	for _, peer := range t.peers {
+		if err := t.SendMessage(peer.Addr(), payload); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -12,12 +12,13 @@ type Hasher[T any] interface {
 // 对Hash方法具体实现的结构体
 type BlockHasher struct{}
 
-func (BlockHasher) Hash(b *Block) types.Hash {
-	// buf := &bytes.Buffer{}
-	// enc := gob.NewEncoder(buf)
-	// if err := enc.Encode(b.Header); err != nil {
-	// 	panic(err)
-	// }
-	h := sha256.Sum256(b.HeaderData())
-	return types.Hash(h)
+func (BlockHasher) Hash(h *Header) types.Hash {
+	h1 := sha256.Sum256(h.Bytes())
+	return types.Hash(h1)
+}
+
+type TxHasher struct{}
+
+func (TxHasher) Hash(tx *Transaction) types.Hash {
+	return types.Hash(sha256.Sum256(tx.Data))
 }

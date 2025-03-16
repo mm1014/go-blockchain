@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go-blockchain/crypto"
 	"go-blockchain/types"
-	"io"
 )
 
 type Header struct {
@@ -34,17 +33,20 @@ func NewBlock(h *Header, txs []Transaction) *Block {
 		Transactions: txs,
 	}
 }
+func (b *Block) AddTransaction(tx *Transaction) {
+	b.Transactions = append(b.Transactions, *tx)
+}
 
 // 将Header字段的数据编码字节切片的形式返回
-func (b *Block) HeaderData() []byte {
+func (h *Header) Bytes() []byte {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
-	enc.Encode(b.Header)
+	enc.Encode(h)
 	return buf.Bytes()
 }
 
 func (b *Block) Sign(privKey crypto.PrivateKey) error {
-	sig, err := privKey.Sign(b.HeaderData())
+	sig, err := privKey.Sign(b.Header.Bytes())
 	if err != nil {
 		return err
 	}
@@ -57,24 +59,29 @@ func (b *Block) Verify() error {
 	if b.Signature == nil {
 		return fmt.Errorf("block has no signature")
 	}
-	if !b.Signature.Verify(b.Validator, b.HeaderData()) {
+	if !b.Signature.Verify(b.Validator, b.Header.Bytes()) {
 		return fmt.Errorf("block has invalid signature")
+	}
+	for _, tx := range b.Transactions {
+		if err := tx.Verify(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // 专门用于解码 *Block 类型的对象
-func (b *Block) Decode(r io.Reader, dec Decoder[*Block]) error {
-	return dec.Decode(r, b)
+func (b *Block) Decode(dec Decoder[*Block]) error {
+	return dec.Decode(b)
 }
 
-func (b *Block) Encode(w io.Writer, dec Encoder[*Block]) error {
-	return dec.Encode(w, b)
+func (b *Block) Encode(dec Encoder[*Block]) error {
+	return dec.Encode(b)
 }
 
-func (b *Block) Hash(hasher Hasher[*Block]) types.Hash {
+func (b *Block) Hash(hasher Hasher[*Header]) types.Hash {
 	if b.hash.IsZero() {
-		b.hash = hasher.Hash(b)
+		b.hash = hasher.Hash(b.Header)
 	}
 	return b.hash
 }
