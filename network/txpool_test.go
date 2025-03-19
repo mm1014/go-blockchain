@@ -20,6 +20,7 @@ func TestTxPoolAddTx(t *testing.T) {
 	assert.Nil(t, p.Add(tx))
 	assert.Equal(t, p.Len(), 1)
 
+	//新建交易但是没添加进池子里面
 	_ = core.NewTransaction([]byte("toooo"))
 	assert.Equal(t, p.Len(), 1)
 
@@ -31,6 +32,7 @@ func TestSortTransactions(t *testing.T) {
 	p := NewTxPool()
 	txLen := 1000
 	for i := 0; i < txLen; i++ {
+		//把 int64 类型的整数 i 转换为十进制的字符串表示
 		tx := core.NewTransaction([]byte(strconv.FormatInt(int64(i), 10)))
 		tx.SetFirstSeen(int64(i * rand.Intn(10000)))
 		assert.Nil(t, p.Add(tx))

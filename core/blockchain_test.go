@@ -43,6 +43,7 @@ func TestAddBlockToHigh(t *testing.T) {
 	bc := newBlockchainWithGenesis(t)
 	//这里开始是第1个块
 	assert.Nil(t, bc.AddBlock(randomBlockWithSignature(t, 1, getPrevBlockHash(t, bc, uint32(1)))))
+	//第一个块的hash不是Hash{}
 	assert.NotNil(t, bc.AddBlock(randomBlockWithSignature(t, 2, types.Hash{})))
 }
 

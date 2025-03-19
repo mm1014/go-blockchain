@@ -8,6 +8,7 @@ import (
 	"go-blockchain/types"
 )
 
+// 块要验证Header签名
 type Header struct {
 	Version       uint32
 	DataHash      types.Hash
@@ -19,9 +20,11 @@ type Header struct {
 
 type Block struct {
 	*Header
+	//块中交易数可能为空，所以不能用指针
 	Transactions []Transaction
 	Validator    crypto.PublicKey
-	Signature    *crypto.Signature
+	//对Header签名
+	Signature *crypto.Signature
 
 	//Cached version of the header hash
 	hash types.Hash
@@ -37,15 +40,18 @@ func (b *Block) AddTransaction(tx *Transaction) {
 	b.Transactions = append(b.Transactions, *tx)
 }
 
-// 将Header字段的数据编码字节切片的形式返回
+// 将Header字段的数据编码成字节切片的形式返回
 func (h *Header) Bytes() []byte {
+	//新建一个缓冲区
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	enc.Encode(h)
 	return buf.Bytes()
 }
 
+// 用验证者的私钥对Header签名
 func (b *Block) Sign(privKey crypto.PrivateKey) error {
+	//对块的Header进行签名
 	sig, err := privKey.Sign(b.Header.Bytes())
 	if err != nil {
 		return err
@@ -59,9 +65,11 @@ func (b *Block) Verify() error {
 	if b.Signature == nil {
 		return fmt.Errorf("block has no signature")
 	}
+	//用验证的公钥来验证Header签名是否正确
 	if !b.Signature.Verify(b.Validator, b.Header.Bytes()) {
 		return fmt.Errorf("block has invalid signature")
 	}
+	//用From的公钥来验证Data是否有效
 	for _, tx := range b.Transactions {
 		if err := tx.Verify(); err != nil {
 			return err

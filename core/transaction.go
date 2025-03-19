@@ -6,6 +6,7 @@ import (
 	"go-blockchain/types"
 )
 
+// Transaction要验证Data签名
 type Transaction struct {
 	Data      []byte
 	From      crypto.PublicKey
@@ -30,6 +31,7 @@ func (tx *Transaction) Hash(hasher Hasher[*Transaction]) types.Hash {
 	return hasher.Hash(tx)
 }
 
+// 用发送方的私钥对Data签名
 func (tx *Transaction) Sign(privKey crypto.PrivateKey) error {
 	sig, err := privKey.Sign(tx.Data)
 	if err != nil {

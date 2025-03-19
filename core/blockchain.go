@@ -6,8 +6,10 @@ import (
 )
 
 type Blockchain struct {
-	store     Storage
-	lock      sync.RWMutex
+	store Storage
+	//读多写少
+	lock sync.RWMutex
+	//区块链中块肯定存在，用指针更好
 	headers   []*Header
 	validator Validator
 }
@@ -17,9 +19,22 @@ func NewBlockchain(genesis *Block) (*Blockchain, error) {
 		headers: []*Header{},
 		store:   NewMemoryStore(),
 	}
+	//BlockValidator实现了Validator接口的方法，所以它也属于Validator类型
 	bc.validator = NewBlockValidator(bc)
 	err := bc.addBlockWithoutValidation(genesis)
 	return bc, err
+}
+
+// 创世区块的产生不需要验证
+func (bc *Blockchain) addBlockWithoutValidation(b *Block) error {
+	bc.lock.Lock()
+	bc.headers = append(bc.headers, b.Header)
+	bc.lock.Unlock()
+	// logrus.WithFields(logrus.Fields{
+	// 	"height": b.Height,
+	// 	"hash":   b.Hash(BlockHasher{}),
+	// }).Info("adding new block")
+	return bc.store.Put(b)
 }
 
 func (bc *Blockchain) SetValidator(v Validator) {
@@ -52,16 +67,4 @@ func (bc *Blockchain) Height() uint32 {
 	bc.lock.RLock()
 	defer bc.lock.RUnlock()
 	return uint32(len(bc.headers) - 1)
-}
-
-// 创世区块的产生不需要验证
-func (bc *Blockchain) addBlockWithoutValidation(b *Block) error {
-	bc.lock.Lock()
-	bc.headers = append(bc.headers, b.Header)
-	bc.lock.Unlock()
-	// logrus.WithFields(logrus.Fields{
-	// 	"height": b.Height,
-	// 	"hash":   b.Hash(BlockHasher{}),
-	// }).Info("adding new block")
-	return bc.store.Put(b)
 }

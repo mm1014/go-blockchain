@@ -33,6 +33,7 @@ func NewMessage(t MessageType, data []byte) *Message {
 	}
 }
 
+// 将msg编码后转成字节切片
 func (msg *Message) Bytes() []byte {
 	buf := &bytes.Buffer{}
 	gob.NewEncoder(buf).Encode(msg)
@@ -47,7 +48,8 @@ type DecodedMessage struct {
 type RPCDecodeFunc func(RPC) (*DecodedMessage, error)
 
 func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
-	msg := Message{}
+	msg := new(Message)
+	//将rpc.payload解码到msg里面
 	if err := gob.NewDecoder(rpc.Payload).Decode(&msg); err != nil {
 		return nil, fmt.Errorf("failed to decode message from %s:%s", rpc.From, err)
 	}
@@ -57,8 +59,11 @@ func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
 	}).Debug("new incoming message")
 
 	switch msg.Header {
+	//把 msg.Data 解码成 Transaction 类型的对象。
 	case MessageTypeTx:
 		tx := new(core.Transaction)
+		//调用 tx.Decode 方法进行解码，core.NewGobTxDecoder 用于创建一个解码器，
+		// bytes.NewReader(msg.Data) 用于将 msg.Data 转换为可读的字节流。
 		if err := tx.Decode(core.NewGobTxDecoder(bytes.NewReader(msg.Data))); err != nil {
 			return nil, err
 		}
@@ -67,6 +72,11 @@ func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
 		return nil, fmt.Errorf("invalid message header %x", msg.Header)
 	}
 
+}
+
+type RPCProcessor interface {
+	// ProcessTransaction(NetAddr, *core.Transaction) error
+	ProcessMessage(*DecodedMessage) error
 }
 
 //	type RPCHandler interface {
@@ -100,8 +110,3 @@ func DefaultRPCDecodeFunc(rpc RPC) (*DecodedMessage, error) {
 
 // 	return nil
 // }
-
-type RPCProcessor interface {
-	// ProcessTransaction(NetAddr, *core.Transaction) error
-	ProcessMessage(*DecodedMessage) error
-}

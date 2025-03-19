@@ -17,13 +17,12 @@ type ServerOpts struct {
 	RPCDecodeFunc RPCDecodeFunc
 	RPCProcessor  RPCProcessor
 	Transports    []Transport
-	BlockTime     time.Duration
+	BlockTime     time.Duration //区块生成时间间隔
 	PrivateKey    *crypto.PrivateKey
 }
 
 type Server struct {
 	ServerOpts
-	// blockTime   time.Duration
 	memPool     *TxPool
 	isValidator bool
 	rpcCh       chan RPC
@@ -61,9 +60,19 @@ func NewServer(opts ServerOpts) *Server {
 func (s *Server) GetRPCCh() <-chan RPC {
 	return s.rpcCh
 }
+func (s *Server) initTransports() { //为每个传输层启动一个 Goroutine，监听其 RPC 消息，并将消息转发到 s.rpcCh 通道
+	for _, tr := range s.Transports {
+		go func(tr Transport) { //每个传输层启动一个 Goroutine，监听其 RPC 消息
+			for rpc := range tr.Consume() { //获取当前传输层的 RPC 消息通道，并不断从中读取消息
+				s.rpcCh <- rpc //将接收到的 RPC 消息发送到服务器的 rpcCh 通道，供服务器统一处理。
+			}
+		}(tr)
+	}
+}
 
 func (s *Server) Start() {
 	s.initTransports()
+	// 创建一个定时器，每隔 s.BlockTime 时间触发一次
 	ticker := time.NewTicker(s.BlockTime)
 free:
 	for {
@@ -98,15 +107,6 @@ func (s *Server) ProcessMessage(msg *DecodedMessage) error {
 	return nil
 }
 
-func (s *Server) broadcast(payload []byte) error {
-	for _, tr := range s.Transports {
-		if err := tr.Broadcast(payload); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (s *Server) processTransaction(tx *core.Transaction) error {
 	hash := tx.Hash(core.TxHasher{})
 	if s.memPool.Has(hash) {
@@ -132,6 +132,17 @@ func (s *Server) processTransaction(tx *core.Transaction) error {
 	return s.memPool.Add(tx)
 }
 
+// 广播最基本的函数
+func (s *Server) broadcast(payload []byte) error {
+	for _, tr := range s.Transports {
+		if err := tr.Broadcast(payload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 广播Tx 调用broadcast
 func (s *Server) broadcastTx(tx *core.Transaction) error {
 	buf := &bytes.Buffer{}
 	if err := tx.Encode(core.NewGobTxEncoder(buf)); err != nil {
@@ -144,14 +155,4 @@ func (s *Server) broadcastTx(tx *core.Transaction) error {
 func (s *Server) createNewBlock() error {
 	fmt.Println("do stuff every x seconds")
 	return nil
-}
-
-func (s *Server) initTransports() { //为每个传输层启动一个 Goroutine，监听其 RPC 消息，并将消息转发到 s.rpcCh 通道
-	for _, tr := range s.Transports {
-		go func(tr Transport) { //每个传输层启动一个 Goroutine，监听其 RPC 消息
-			for rpc := range tr.Consume() { //获取当前传输层的 RPC 消息通道，并不断从中读取消息
-				s.rpcCh <- rpc //将接收到的 RPC 消息发送到服务器的 rpcCh 通道，供服务器统一处理。
-			}
-		}(tr)
-	}
 }

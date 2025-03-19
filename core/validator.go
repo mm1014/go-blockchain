@@ -18,6 +18,7 @@ func NewBlockValidator(bc *Blockchain) *BlockValidator {
 
 func (v *BlockValidator) ValidateBlock(b *Block) error {
 	if v.bc.HasBlock(b.Height) {
+		//传递一个Hasher[*Header]的具体实例
 		return fmt.Errorf("chain already contains block (%d) with hash (%s)", b.Height, b.Hash(BlockHasher{}))
 	}
 
@@ -30,7 +31,7 @@ func (v *BlockValidator) ValidateBlock(b *Block) error {
 	if err != nil {
 		return err
 	}
-
+	//对前一个块的Header序列化
 	hash := BlockHasher{}.Hash(prevHeader)
 	if hash != b.PrevBlockHash {
 		return fmt.Errorf("the hash of the previous block (%s) is invalid", b.PrevBlockHash)

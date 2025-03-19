@@ -18,7 +18,7 @@ func NewTxMapSorter(txMap map[types.Hash]*core.Transaction) *TxMapSorter {
 		i++
 	}
 	s := &TxMapSorter{txx}
-
+	//	sort.Sort 函数默认依据 Less 方法来排序
 	sort.Sort(s)
 	return s
 }
